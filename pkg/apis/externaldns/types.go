@@ -222,6 +222,8 @@ type Config struct {
 	WebhookServer                      bool
 	TraefikDisableLegacy               bool
 	TraefikDisableNew                  bool
+	CustomCFTargetOverride             string
+	CustomAWSTargetSuffix              string
 }
 
 var defaultConfig = &Config{
@@ -383,6 +385,8 @@ var defaultConfig = &Config{
 	WebhookServer:               false,
 	TraefikDisableLegacy:        false,
 	TraefikDisableNew:           false,
+	CustomCFTargetOverride:      "",
+	CustomAWSTargetSuffix:       "",
 }
 
 // NewConfig returns new Config object
@@ -474,7 +478,7 @@ func (cfg *Config) ParseFlags(args []string) error {
 	app.Flag("traefik-disable-new", "Disable listeners on Resources under the traefik.io API Group").Default(strconv.FormatBool(defaultConfig.TraefikDisableNew)).BoolVar(&cfg.TraefikDisableNew)
 
 	// Flags related to providers
-	providers := []string{"akamai", "alibabacloud", "aws", "aws-sd", "azure", "azure-dns", "azure-private-dns", "bluecat", "civo", "cloudflare", "coredns", "designate", "digitalocean", "dnsimple", "dyn", "exoscale", "gandi", "godaddy", "google", "ibmcloud", "infoblox", "inmemory", "linode", "ns1", "oci", "ovh", "pdns", "pihole", "plural", "rcodezero", "rdns", "rfc2136", "safedns", "scaleway", "skydns", "tencentcloud", "transip", "ultradns", "vinyldns", "vultr", "webhook"}
+	providers := []string{"akamai", "alibabacloud", "aws", "aws-sd", "azure", "azure-dns", "azure-private-dns", "bluecat", "civo", "cloudflare", "coredns", "designate", "digitalocean", "dnsimple", "dyn", "exoscale", "gandi", "godaddy", "google", "ibmcloud", "infoblox", "inmemory", "linode", "ns1", "oci", "ovh", "pdns", "pihole", "plural", "rcodezero", "rdns", "rfc2136", "safedns", "scaleway", "skydns", "tencentcloud", "transip", "ultradns", "vinyldns", "vultr", "webhook", "custom"}
 	app.Flag("provider", "The DNS provider where the DNS records will be created (required, options: "+strings.Join(providers, ", ")+")").Required().PlaceHolder("provider").EnumVar(&cfg.Provider, providers...)
 	app.Flag("domain-filter", "Limit possible target zones by a domain suffix; specify multiple times for multiple domains (optional)").Default("").StringsVar(&cfg.DomainFilter)
 	app.Flag("exclude-domains", "Exclude subdomains (optional)").Default("").StringsVar(&cfg.ExcludeDomains)
@@ -643,6 +647,10 @@ func (cfg *Config) ParseFlags(args []string) error {
 	app.Flag("webhook-provider-write-timeout", "[EXPERIMENTAL] The write timeout for the webhook provider in duration format (default: 10s)").Default(defaultConfig.WebhookProviderWriteTimeout.String()).DurationVar(&cfg.WebhookProviderWriteTimeout)
 
 	app.Flag("webhook-server", "[EXPERIMENTAL] When enabled, runs as a webhook server instead of a controller. (default: false).").BoolVar(&cfg.WebhookServer)
+
+	// Custom provider
+	app.Flag("custom-cf-target-override", "The Cloudflare DNS records will all have the target equal with this value").Default(defaultConfig.CustomCFTargetOverride).StringVar(&cfg.CustomCFTargetOverride)
+	app.Flag("custom-aws-target-suffix", "The AWS DNS records will all have the target equal with the DNS name plus this suffix").Default(defaultConfig.CustomAWSTargetSuffix).StringVar(&cfg.CustomAWSTargetSuffix)
 
 	_, err := app.Parse(args)
 	if err != nil {

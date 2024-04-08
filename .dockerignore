@@ -1,0 +1,12 @@
+# Git Related Items
+.git
+.github
+.gitignore
+# CI Related Items
+.travis.yml
+cloudbuild.yaml
+.golangci.yml
+.zappr.yaml
+
+Dockerfile
+/external-dns-custom
