@@ -13,3 +13,6 @@ cloudbuild.yaml
 docs
 OWNERS
 vendor
+
+Dockerfile
+/external-dns-custom

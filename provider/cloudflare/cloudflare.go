@@ -127,6 +127,10 @@ type CloudFlareProvider struct {
 	DNSRecordsPerPage int
 }
 
+func (p *CloudFlareProvider) ProxiedByDefault() bool {
+	return p.proxiedByDefault
+}
+
 // cloudFlareChange differentiates between ChangActions
 type cloudFlareChange struct {
 	Action         string
