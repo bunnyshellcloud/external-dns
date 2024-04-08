@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sigs.k8s.io/external-dns/provider/custom"
 	"syscall"
 	"time"
 
@@ -196,7 +197,8 @@ func main() {
 	zoneTagFilter := provider.NewZoneTagFilter(cfg.AWSZoneTagFilter)
 
 	var awsSession *session.Session
-	if cfg.Provider == "aws" || cfg.Provider == "aws-sd" || cfg.Registry == "dynamodb" {
+	// custom means aws + cloudflare + some tweaks
+	if cfg.Provider == "aws" || cfg.Provider == "aws-sd" || cfg.Registry == "dynamodb" || cfg.Provider == "custom" {
 		awsSession, err = aws.NewSession(
 			aws.AWSSessionConfig{
 				AssumeRole:           cfg.AWSAssumeRole,
@@ -419,6 +421,56 @@ func main() {
 		p, err = tencentcloud.NewTencentCloudProvider(domainFilter, zoneIDFilter, cfg.TencentCloudConfigFile, cfg.TencentCloudZoneType, cfg.DryRun)
 	case "webhook":
 		p, err = webhook.NewWebhookProvider(cfg.WebhookProviderURL)
+	case "custom":
+		var awsP *aws.AWSProvider
+		var cfP *cloudflare.CloudFlareProvider
+
+		// instantiate an AWS Provider just like above
+		awsP, err = aws.NewAWSProvider(
+			aws.AWSConfig{
+				DomainFilter:          domainFilter,
+				ZoneIDFilter:          zoneIDFilter,
+				ZoneTypeFilter:        zoneTypeFilter,
+				ZoneTagFilter:         zoneTagFilter,
+				ZoneMatchParent:       cfg.AWSZoneMatchParent,
+				BatchChangeSize:       cfg.AWSBatchChangeSize,
+				BatchChangeSizeBytes:  cfg.AWSBatchChangeSizeBytes,
+				BatchChangeSizeValues: cfg.AWSBatchChangeSizeValues,
+				BatchChangeInterval:   cfg.AWSBatchChangeInterval,
+				EvaluateTargetHealth:  cfg.AWSEvaluateTargetHealth,
+				PreferCNAME:           cfg.AWSPreferCNAME,
+				DryRun:                cfg.DryRun,
+				ZoneCacheDuration:     cfg.AWSZoneCacheDuration,
+			},
+			route53.New(awsSession),
+		)
+
+		if err == nil {
+			// instantiate a Cloudflare Provider just like above (plus some small changes)
+			cfP, err = cloudflare.NewCloudFlareProvider(
+				endpoint.DomainFilter{}, // no domainFilter, just "duplicate" what AWS does
+				provider.ZoneIDFilter{}, // no zoneIDFilter, just "duplicate" what AWS does
+				cfg.CloudflareProxied,
+				cfg.DryRun,
+				cfg.CloudflareDNSRecordsPerPage,
+			)
+		}
+
+		if err == nil {
+			// instantiate the Custom provider, passing the AWS and Cloudflare providers,
+			// the custom provider config values, and some TXT registry config values
+			p, err = custom.NewCustomProvider(
+				cfP,
+				awsP,
+				cfg.CustomCFTargetOverride,
+				cfg.CustomAWSTargetSuffix,
+				cfg.Registry,
+				cfg.TXTPrefix,
+				cfg.TXTSuffix,
+				cfg.TXTEncryptEnabled,
+				[]byte(cfg.TXTEncryptAESKey),
+			)
+		}
 	default:
 		log.Fatalf("unknown dns provider: %s", cfg.Provider)
 	}

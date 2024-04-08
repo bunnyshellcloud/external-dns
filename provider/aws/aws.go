@@ -251,6 +251,10 @@ type AWSProvider struct {
 	failedChangesQueue map[string]Route53Changes
 }
 
+func (p *AWSProvider) PreferCNAME() bool {
+	return p.preferCNAME
+}
+
 // AWSConfig contains configuration to create a new AWS provider.
 type AWSConfig struct {
 	DomainFilter          endpoint.DomainFilter
